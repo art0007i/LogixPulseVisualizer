@@ -15,7 +15,7 @@ namespace LogixPulseVisualizer
     {
         public override string Name => "LogixPulseVisualizer";
         public override string Author => "art0007i";
-        public override string Version => "1.0.0";
+        public override string Version => "1.0.1";
         public override string Link => "https://github.com/art0007i/LogixPulseVisualizer/";
 
         [AutoRegisterConfigKey]
@@ -59,14 +59,13 @@ namespace LogixPulseVisualizer
                 {
                     Slot slot = impulseSourceProxy.Slot[0];
                     ConnectionWire obj2 = ((slot != null) ? slot.GetComponent<ConnectionWire>(null, false) : null);
-                    //UniLog.Log(obj2 + " connect wire of first child", false);
                     if (obj2 != null)
                     {
-                        FresnelMaterial fresnelMaterial = ((SyncRef<FresnelMaterial>)typeof(ConnectionWire).GetField("Material", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(obj2)).Target;
+                        FresnelMaterial fresnelMaterial = ((SyncRef<FresnelMaterial>) obj2.GetSyncMember("Material")).Target;
                         if (fresnelMaterial != null)
                         {
                             color from = ColorHSV.Hue((float)__instance.Time.WorldTime * 0.5f);
-                            color to = (typeof(ConnectionWire).GetField("TypeColor", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(obj2) as Sync<color>).Value;
+                            color to = ((Sync<color>)obj2.GetSyncMember("TypeColor")).Value;
                             fresnelMaterial.FarColor.TweenFromTo(from, to, 1f, CurvePreset.Sine, null, null);
                             fresnelMaterial.NearColor.TweenFromTo(from, to, 1f, CurvePreset.Sine, null, null);
                         }
