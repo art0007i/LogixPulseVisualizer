@@ -21,7 +21,7 @@ namespace LogixPulseVisualizer
         [AutoRegisterConfigKey]
         private static ModConfigurationKey<bool> KEY_ENABLED = new("enabled", "When enabled, pulses will have visuals.", () => true);
         [AutoRegisterConfigKey]
-        private static ModConfigurationKey<bool> KEY_RESET = new("reset", "When enabled, a new pulse will reset the global hue rotation");
+        private static ModConfigurationKey<bool> KEY_RESET = new("reset", "When enabled, a new pulse will reset the global hue rotation", () => true);
         private static Dictionary<MeshRenderer, Coroutine> TmpRainbows = new();
         private static MethodInfo patchedMethod = typeof(Impulse).GetMethod("Trigger");
         private static MethodInfo patchMethod = typeof(LogixPulseVisualizerPatch).GetMethod("Postfix");
@@ -65,7 +65,7 @@ namespace LogixPulseVisualizer
                 {
                     Slot slot = impulseSourceProxy.Slot[0];
                     ConnectionWire obj2 = ((slot != null) ? slot.GetComponent<ConnectionWire>(null, false) : null);
-                    if (obj2 != null)
+                    if (obj2 != null && obj2.TargetSlot.Target != null)
                     {
                         MeshRenderer renderer = ((SyncRef<Slot>)obj2.GetSyncMember("WireSlot")).Target?.GetComponent<MeshRenderer>();
                         if (renderer != null)
@@ -75,8 +75,6 @@ namespace LogixPulseVisualizer
                             if (TmpRainbows.TryGetValue(renderer, out coroutine))
                             {
                                 //((CoroutineHandle)coHandle.GetValue(coroutine))
-
-                                GetMatertial(world);//incase KEY_RESET is true;
                                 coroutine.Stop();
                                 TmpRainbows.Remove(renderer);
                             }
@@ -136,10 +134,11 @@ namespace LogixPulseVisualizer
                 panner.Target = gradiant.Progress;
                 panner.Speed = 1f;
                 panner.Repeat = 1f;
+                panner.Offset = 0f;
             }
             else if (panner.Target != gradiant.Progress) panner.Target = gradiant.Progress;
 
-            if (config.GetValue(KEY_RESET)) panner.PreOffset = -gradiant.Progress;
+            if (config.GetValue(KEY_RESET)) panner.PreOffset = (-gradiant.Progress + panner.PreOffset) % 1f;
 
             return fresnelMaterial;
         }
