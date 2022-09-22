@@ -19,16 +19,22 @@ namespace LogixPulseVisualizer
         public override string Link => "https://github.com/art0007i/LogixPulseVisualizer/";
 
         [AutoRegisterConfigKey]
-        private static ModConfigurationKey<bool> KEY_ENABLED = new("enabled", "When enabled, pulses will have visuals.", ()=>true);
+        private static ModConfigurationKey<bool> KEY_ENABLED = new("enabled", "When enabled, pulses will have visuals.", () => true);
+        [AutoRegisterConfigKey]
+        private static ModConfigurationKey<bool> KEY_RESET = new("reset", "When enabled, a new pulse will reset the global hue rotation");
+        private static Dictionary<MeshRenderer, Coroutine> TmpRainbows = new();
         private static MethodInfo patchedMethod = typeof(Impulse).GetMethod("Trigger");
         private static MethodInfo patchMethod = typeof(LogixPulseVisualizerPatch).GetMethod("Postfix");
+        //sprivate static FieldInfo coHandle = typeof(Coroutine).GetField("handle", BindingFlags.NonPublic);
+        //private static TypeInfo coHandleType = Type.GetType(typeof(CoroutineHandle).AssemblyQualifiedName);
         private static Harmony harmony;
+        private static ModConfiguration config;
         public override void OnEngineInit()
         {
             harmony = new Harmony("me.art0007i.LogixPulseVisualizer");
-
-            GetConfiguration().OnThisConfigurationChanged += ChangeHandler;
-            if (GetConfiguration().GetValue(KEY_ENABLED))
+            config = GetConfiguration();
+            config.OnThisConfigurationChanged += ChangeHandler;
+            if (config.GetValue(KEY_ENABLED))
             {
                 harmony.Patch(patchedMethod, postfix: new HarmonyMethod(patchMethod));
             }
@@ -36,7 +42,7 @@ namespace LogixPulseVisualizer
 
         private void ChangeHandler(ConfigurationChangedEvent configurationChangedEvent)
         {
-            if(configurationChangedEvent.Key == KEY_ENABLED)
+            if (configurationChangedEvent.Key == KEY_ENABLED)
             {
                 if (configurationChangedEvent.Config.GetValue(KEY_ENABLED))
                 {
@@ -61,17 +67,81 @@ namespace LogixPulseVisualizer
                     ConnectionWire obj2 = ((slot != null) ? slot.GetComponent<ConnectionWire>(null, false) : null);
                     if (obj2 != null)
                     {
-                        FresnelMaterial fresnelMaterial = ((SyncRef<FresnelMaterial>) obj2.GetSyncMember("Material")).Target;
-                        if (fresnelMaterial != null)
+                        MeshRenderer renderer = ((SyncRef<Slot>)obj2.GetSyncMember("WireSlot")).Target?.GetComponent<MeshRenderer>();
+                        if (renderer != null)
                         {
-                            color from = ColorHSV.Hue((float)__instance.Time.WorldTime * 0.5f);
-                            color to = ((Sync<color>)obj2.GetSyncMember("TypeColor")).Value;
-                            fresnelMaterial.FarColor.TweenFromTo(from, to, 1f, CurvePreset.Sine, null, null);
-                            fresnelMaterial.NearColor.TweenFromTo(from, to, 1f, CurvePreset.Sine, null, null);
+                            World world = __instance.World;
+                            Coroutine coroutine;
+                            if (TmpRainbows.TryGetValue(renderer, out coroutine))
+                            {
+                                //((CoroutineHandle)coHandle.GetValue(coroutine))
+
+                                GetMatertial(world);//incase KEY_RESET is true;
+                                coroutine.Stop();
+                                TmpRainbows.Remove(renderer);
+                            }
+                            IAssetProvider<Material> old = renderer.Material.Target;
+                            renderer.Materials[0] = GetMatertial(world);
+                            TmpRainbows.Add(renderer, world.RunInSeconds(1f, () => { renderer.Materials[0] = old; TmpRainbows.Remove(renderer); }));
                         }
                     }
                 }
             }
+        }
+        static FresnelMaterial GetMatertial(World world)
+        {
+            Slot slot = world.AssetsSlot.FindOrAdd("LogixAssets");
+
+            const string key = "PulseVisualMaterial";
+            FresnelMaterial fresnelMaterial = world.KeyOwner(key) as FresnelMaterial;
+            if (fresnelMaterial == null)
+            {
+                fresnelMaterial = slot.AttachComponent<FresnelMaterial>();
+                fresnelMaterial.AssignKey(key, 1, false);
+                fresnelMaterial.BlendMode.Value = BlendMode.Alpha;
+                fresnelMaterial.ZWrite.Value = ZWrite.On;
+                fresnelMaterial.Sidedness.Value = Sidedness.Double;
+                StaticTexture2D wireTexture = LogixHelper.GetWireTexture(world, 1, true);
+                fresnelMaterial.NearTexture.Target = wireTexture;
+                fresnelMaterial.FarTexture.Target = wireTexture;
+                float2 value = new float2(0.5f, 1f);
+                fresnelMaterial.NearTextureScale.Value = value;
+                fresnelMaterial.FarTextureScale.Value = value;
+                fresnelMaterial.FarColor.Value.MulRGB(.5f).MulA(.8f);
+            }
+
+            const string gradiantKey = key + "Gradiant";
+            ValueGradientDriver<color> gradiant = world.KeyOwner(gradiantKey) as ValueGradientDriver<color>;
+            if (gradiant == null)
+            {
+                gradiant = slot.AttachComponent<ValueGradientDriver<color>>();
+                gradiant.AssignKey(gradiantKey, 1, false);
+                gradiant.AddPoint(0f, color.Red);
+                gradiant.AddPoint(1f / 6f, color.Yellow);
+                gradiant.AddPoint(1f / 3f, color.Green);
+                gradiant.AddPoint(0.5f, color.Cyan);
+                gradiant.AddPoint(2f / 3f, color.Blue);
+                gradiant.AddPoint(5f / 6f, color.Magenta);
+                gradiant.AddPoint(1f, color.Red);
+                gradiant.Target.Target = fresnelMaterial.NearColor;
+            }
+            else if (gradiant.Target.Target != fresnelMaterial.NearColor) gradiant.Target.Target = fresnelMaterial.NearColor;
+
+            const string pannerKey = key + "Panner";
+            Panner1D panner = world.KeyOwner(pannerKey) as Panner1D;
+            if (panner == null)
+            {
+                panner = slot.AttachComponent<Panner1D>();
+                panner.AssignKey(pannerKey, 1, false);
+                panner.Target = gradiant.Progress;
+                panner.Speed = 1f;
+                panner.Repeat = 1f;
+            }
+            else if (panner.Target != gradiant.Progress) panner.Target = gradiant.Progress;
+
+            if (config.GetValue(KEY_RESET)) panner.PreOffset = -gradiant.Progress;
+
+            return fresnelMaterial;
         }
     }
 }
