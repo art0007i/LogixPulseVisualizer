@@ -25,8 +25,9 @@ namespace LogixPulseVisualizer
         private static Dictionary<MeshRenderer, Coroutine> TmpRainbows = new();
         private static MethodInfo patchedMethod = typeof(Impulse).GetMethod("Trigger");
         private static MethodInfo patchMethod = typeof(LogixPulseVisualizerPatch).GetMethod("Postfix");
-        //sprivate static FieldInfo coHandle = typeof(Coroutine).GetField("handle", BindingFlags.NonPublic);
-        //private static TypeInfo coHandleType = Type.GetType(typeof(CoroutineHandle).AssemblyQualifiedName);
+        private static FieldInfo coHandle = typeof(Coroutine).GetField("handle", BindingFlags.NonPublic);
+        private static Type coHandleType = AppDomain.CurrentDomain.GetAssemblies().Where((e) => e.FullName.StartsWith("FrooxEngine,") && e.FullName.EndsWith(" Culture=neutral, PublicKeyToken=null")).First().GetType("FrooxEngine.CoroutineHandle");// Type.GetType("FrooxEngine.CoroutineHandle", true, false);
+        private static MethodInfo finishCo = coHandleType.GetMethod("Finish", BindingFlags.NonPublic);
         private static Harmony harmony;
         private static ModConfiguration config;
         public override void OnEngineInit()
@@ -74,9 +75,8 @@ namespace LogixPulseVisualizer
                             Coroutine coroutine;
                             if (TmpRainbows.TryGetValue(renderer, out coroutine))
                             {
-                                //((CoroutineHandle)coHandle.GetValue(coroutine))
+                                finishCo.Invoke(coHandle.GetValue(coroutine), null); // error is thrown here
                                 coroutine.Stop();
-                                TmpRainbows.Remove(renderer);
                             }
                             IAssetProvider<Material> old = renderer.Material.Target;
                             renderer.Materials[0] = GetMatertial(world);
