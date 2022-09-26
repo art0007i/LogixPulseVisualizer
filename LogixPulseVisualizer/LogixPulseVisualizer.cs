@@ -142,7 +142,6 @@ namespace LogixPulseVisualizer
 			else if (panner.Target != gradiant.Progress) panner.Target = gradiant.Progress;
 
 			if (config.GetValue(KEY_RESET)) panner.PreOffset = (-gradiant.Progress + panner.PreOffset) % 1f;
-
 			return fresnelMaterial;
 		}
 	}
