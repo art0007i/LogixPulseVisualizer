@@ -64,9 +64,9 @@ namespace LogixPulseVisualizer
                         FresnelMaterial fresnelMaterial = ((SyncRef<FresnelMaterial>) obj2.GetSyncMember("Material")).Target;
                         if (fresnelMaterial != null)
                         {
-                            color from = ColorHSV.Hue((float)__instance.Time.WorldTime * 0.5f);
-                            color to = ((Sync<color>)obj2.GetSyncMember("TypeColor")).Value;
-                            fresnelMaterial.FarColor.TweenFromTo(from, to, 1f, CurvePreset.Sine, null, null);
+                            color from = ColorHSV.Hue((float)__instance.Time.WorldTime * 0.5f).SetA(.8f);
+                            color to = ((Sync<color>)obj2.GetSyncMember("TypeColor")).Value.SetA(.8f);
+                            fresnelMaterial.FarColor.TweenFromTo(from.MulRGB(.5f), to.MulRGB(.5f), 1f, CurvePreset.Sine, null, null);
                             fresnelMaterial.NearColor.TweenFromTo(from, to, 1f, CurvePreset.Sine, null, null);
                         }
                     }
