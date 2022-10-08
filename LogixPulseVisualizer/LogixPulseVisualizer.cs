@@ -71,7 +71,7 @@ namespace LogixPulseVisualizer
 						if (renderer != null)
 						{
 							World world = __instance.World;
-							if (config.GetValue(KEY_FORCE) || ((AssetProvider<Material>)renderer.Material).AssetReferenceCount > 1 || renderer.Material.Slot.IsChildOf(world.AssetsSlot))
+							if (config.GetValue(KEY_FORCE) || ((AssetProvider<Material>)renderer.Material).AssetReferenceCount > 1 || renderer.Material.Target.Slot.IsChildOf(world.AssetsSlot))
 							{
 								KeyValuePair<Coroutine, Action> coroutine;
 								if (corutines.TryGetValue(renderer, out coroutine))
