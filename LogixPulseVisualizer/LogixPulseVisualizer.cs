@@ -70,9 +70,9 @@ namespace LogixPulseVisualizer
 						MeshRenderer renderer = ((SyncRef<Slot>)obj2.GetSyncMember("WireSlot")).Target?.GetComponent<MeshRenderer>();
 						if (renderer != null)
 						{
-							if (config.GetValue(KEY_FORCE) || ((AssetProvider<Material>)renderer.Material).AssetReferenceCount > 1)
+							World world = __instance.World;
+							if (config.GetValue(KEY_FORCE) || ((AssetProvider<Material>)renderer.Material).AssetReferenceCount > 1 || renderer.Material.Slot.IsChildOf(world.AssetsSlot))
 							{
-								World world = __instance.World;
 								KeyValuePair<Coroutine, Action> coroutine;
 								if (corutines.TryGetValue(renderer, out coroutine))
 								{
